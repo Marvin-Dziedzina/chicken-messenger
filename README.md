@@ -1,2 +1,2 @@
 # chicken-messenger
-The encrypted console based messenger.
+A encrypted console based messenger.
