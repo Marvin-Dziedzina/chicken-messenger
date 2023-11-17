@@ -2,8 +2,7 @@ use serde_json::{self, Value};
 use std::{fs::File, io::Read};
 
 pub struct ConfigData {
-    password: String,
-    admin_password: String,
+    pub password: String,
 }
 
 pub async fn read_config() -> ConfigData {
@@ -28,6 +27,5 @@ pub async fn read_config() -> ConfigData {
 
     ConfigData {
         password: config_data["password"].to_string(),
-        admin_password: config_data["admin_password"].to_string(),
     }
 }
