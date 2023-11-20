@@ -7,3 +7,11 @@ Requirements for v1.0.0
 * Send the received messages to the associated account
 * Create new user accounts (You need a password for this but you have the option to make the mailBox an open mailBox)
 * Create subadresses that link to your address
+
+Database:
+* Users
+    * user_name
+    * user_hash
+    * user_password_hash
+
+* Messages
