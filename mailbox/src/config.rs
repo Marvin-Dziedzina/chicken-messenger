@@ -1,8 +1,14 @@
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Argon2,
+};
 use serde_json::{self, Value};
+use sha256::digest;
 use std::{fs::File, io::Read};
 
 pub struct ConfigData {
-    pub password: String,
+    pub auth_password: String,
+    pub auth_pw_hash: String,
 }
 
 pub async fn read_config() -> ConfigData {
@@ -25,7 +31,15 @@ pub async fn read_config() -> ConfigData {
         Err(e) => panic!("Error while converting string to json! Error: {}", e),
     };
 
+    let pw: String;
+    if !config_data["password"].to_string().is_empty() {
+        pw = config_data["password"].to_string();
+    } else {
+        pw = String::from("");
+    }
+
     ConfigData {
-        password: config_data["password"].to_string(),
+        auth_password: pw.clone(),
+        auth_pw_hash: digest(pw),
     }
 }

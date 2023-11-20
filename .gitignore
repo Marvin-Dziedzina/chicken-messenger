@@ -1,1 +1,3 @@
 mailbox/target
+mailbox/database.sqlite
+mailbox/out.log
