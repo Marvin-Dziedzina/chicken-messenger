@@ -3,7 +3,10 @@ use json;
 use serde_json::{self, Value};
 use sqlite;
 
+extern crate rand;
+
 mod config;
+mod crypto_lib;
 mod query_params;
 mod responses;
 mod sqlite_hdlr;
@@ -18,14 +21,21 @@ async fn create_user(
     req_body: HttpRequest,
     account_data: web::Query<query_params::PwParam>,
 ) -> impl Responder {
-    fn add_user(user_name: String, password: String, salt: String) {}
+    fn add_user(user_name: String, password: String, salt: String) {
+        let sqlite_instance = SqLiteHDLR::new(DATABASE_PATH);
+        sqlite_instance.execute(
+            format!("INSERT INTO users VALUES ({user_name}, {}, {password}, {salt})").as_str(),
+        );
+    }
 
     let config_data = config::read_config().await;
 
     if config_data.auth_password.is_empty() {
-        //add_user(user_name, password, salt);
-        let sqlite_instance = SqLiteHDLR::new(DATABASE_PATH);
-        sqlite_instance.execute("")
+        add_user(
+            account_data.user_name.clone(),
+            account_data.password.clone(),
+            account_data.salt.clone(),
+        );
     } else if config_data.auth_pw_hash != account_data.auth_password_hash {
         let response =
             responses::DefaultResponse::new(false, "", false, responses::AuthResponse::new("", ""));
@@ -54,6 +64,11 @@ async fn delete_user(req_body: HttpRequest) -> impl Responder {
 #[get("/get_salt")]
 async fn get_salt(req_body: HttpRequest) -> impl Responder {
     HttpResponse::Ok().body("Not implemented")
+}
+
+#[get("/generate_salt")]
+async fn generate_salt(req_body: HttpRequest) -> impl Responder {
+    HttpResponse::Ok().body("12345")
 }
 
 #[actix_web::main]

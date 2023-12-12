@@ -1,10 +1,9 @@
-use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-    Argon2,
-};
 use serde_json::{self, Value};
-use sha256::digest;
 use std::{fs::File, io::Read};
+
+mod hash_lib {
+    include!("crypto_lib.rs");
+}
 
 pub struct ConfigData {
     pub auth_password: String,

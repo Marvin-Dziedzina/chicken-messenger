@@ -11,19 +11,22 @@ impl SqLiteHDLR {
     pub fn new(path: &str) -> SqLiteHDLR {
         let conn = sqlite::open(path).expect("Could not open sqlite connection!");
 
+        let mut users_table_exist = false;
         conn.iterate(
             "SELECT name FROM sqlite_master WHERE type=\"table\" AND name=\"users\"",
-            |pairs| {
-                if pairs.is_empty() {
-                    conn.execute(
-                        "CREATE TABLE users (user_name TEXT, user_address TEXT, password_hash TEXT)",
-                    ).expect("Could not create table!");
-                }
-
+            |_| {
+                users_table_exist = true;
                 false
             },
         )
         .unwrap();
+
+        if !users_table_exist {
+            conn.execute(
+                "CREATE TABLE users (user_name TEXT, user_address TEXT, password_hash TEXT, salt TEXT)",
+            )
+            .expect("Could not create users table!");
+        }
 
         SqLiteHDLR {
             path: path.to_string(),
@@ -36,6 +39,14 @@ impl SqLiteHDLR {
         self.conn
             .execute(query)
             .expect("Invalid sqlite query provided!");
+    }
+
+    pub fn iter_execute<F>(
+        &self,
+        query: &str,
+        callback: fn(pairs: &[(&str, Option<&str>)]) -> bool,
+    ) -> Result<(), sqlite::Error> {
+        return self.conn.iterate(query, callback);
     }
 
     fn write_log(&self, msg: &str) {
