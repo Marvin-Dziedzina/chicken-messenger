@@ -12,7 +12,7 @@ Data:
 * Message Data
     * user_hash
     * text
-    
+
 Database:
 * Users
     * user_name 
@@ -30,3 +30,13 @@ Database:
         * messages
         * messages
         * ...
+
+Endpoints:
+* Verification:
+    * is_user_hash_existent(user_hash)
+    * is_user_hash(user_hash)
+    * name_to_user_hash(name)
+
+* Messaging:
+    * put_message(user_hash, messages)
+    * get_messages(user_name, user_password_hash)
