@@ -34,7 +34,6 @@ Database:
 Endpoints:
 * Verification:
     * is_user_hash_existent(user_hash)
-    * is_user_hash(user_hash)
     * name_to_user_hash(name)
 
 * Messaging:
