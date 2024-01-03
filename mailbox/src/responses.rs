@@ -1,14 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Deserialize, Serialize)]
-pub struct NoContent {}
-impl NoContent {
-    pub fn new() -> NoContent {
-        NoContent {}
-    }
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct Response<T> {
     timestamp: f64,
@@ -33,6 +25,28 @@ impl<T> Response<T> {
             is_error,
             error_msg: error_msg.to_string(),
             content,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct NoContent {}
+impl NoContent {
+    pub fn new() -> NoContent {
+        NoContent {}
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct NameToUserHashContent {
+    user_name: String,
+    user_hash: String,
+}
+impl NameToUserHashContent {
+    pub fn new(user_name: String, user_hash: String) -> NameToUserHashContent {
+        NameToUserHashContent {
+            user_name: user_name.to_string(),
+            user_hash: user_hash.to_string(),
         }
     }
 }
