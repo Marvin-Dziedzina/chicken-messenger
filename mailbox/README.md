@@ -1,11 +1,14 @@
 # Chicken mailBox
 
-The mailBox is a rest API for the chicken messenger. This software should be deployed on an server or an computer that is always connected to the internet. 
+The mailBox receives messages if the recipient is not online. If the recipient is online the collected messages get sent to the user.
+
+The mailBox shouldnt store important data and the data that is stored for the mailBox to function should be deleted as soon as all recipients have collected the data. The mailBox will receive and send all data over tor.
 
 Requirements for v1.0.0
-* Send encrypted messages from an account to other mailBoxes
-* Receive encrypted messages from other mailBoxes 
-* Send the received messages to the associated account
+* Routed over tor
+* Collect encrypted messages from an client 
+* Send the collected messages to the recipients
+* Delete all stored data associated to the message when it was collected by all recipients
 
 Data:
 * Message Data
@@ -26,6 +29,14 @@ Database:
         * ...
 
 Endpoints:
-* Messaging:
-    * put_message(user_hash, encrypted_message)
-    * get_messages(user_hash)
+  * put_message(user_hash, encrypted_message) -> OK?
+  * get_messages(user_hash) -> Messages
+  * is_new_message_available(user_hash) -> Number of new messages
+
+
+Structure:
+* Chat|Group Chat:
+  * Messages contains data:
+    - Text
+    - Files
+    - Pictures
