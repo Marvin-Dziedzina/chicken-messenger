@@ -1,24 +1,18 @@
-# mailBox
-The mailBox is a rest API for the chicken messenger. This software should be placed on an external server somewhere apart from you. The IP address and a user address will be used to route the messages to a specific user. 
+# Chicken mailBox
+
+The mailBox is a rest API for the chicken messenger. This software should be deployed on an server or an computer that is always connected to the internet. 
 
 Requirements for v1.0.0
 * Send encrypted messages from an account to other mailBoxes
 * Receive encrypted messages from other mailBoxes 
 * Send the received messages to the associated account
-* Create new user accounts (You need a password for this but you have the option to make the mailBox an open mailBox)
-* Create subadresses that link to your address
 
 Data:
 * Message Data
     * user_hash
-    * text
+    * encrypted message
 
 Database:
-* Users
-    * user_name 
-    * user_hash
-    * user_password_hash
-
 * Messages
     * user_hash
         * messages
@@ -32,10 +26,6 @@ Database:
         * ...
 
 Endpoints:
-* Verification:
-    * is_user_hash_existent(user_hash)
-    * name_to_user_hash(name)
-
 * Messaging:
-    * put_message(user_hash, messages)
-    * get_messages(user_name, user_password_hash)
+    * put_message(user_hash, encrypted_message)
+    * get_messages(user_hash)

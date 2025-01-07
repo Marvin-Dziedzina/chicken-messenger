@@ -1,2 +1,3 @@
-# chicken-messenger
-A encrypted console based messenger.
+# Chicken Messenger
+
+A end to end encrypted peer to peer messenger.
