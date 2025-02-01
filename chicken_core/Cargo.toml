@@ -1,0 +1,13 @@
+[package]
+name = "chicken_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.95"
+arti-client = "0.26.0"
+env_logger = "0.11.6"
+log = "0.4.25"
+native-tls = "0.2.13"
+tokio = "1.43.0"
+tor-rtcompat = "0.26.0"

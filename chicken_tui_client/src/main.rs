@@ -1,4 +1,4 @@
-use chicken_messenger::client;
+use chicken_core;
 
 fn main() {
     env_logger::init();
