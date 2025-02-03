@@ -1,6 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["chicken_core", "chicken_mailbox", "chicken_tui_client"]
+members = [
+    "chicken_core",
+    "chicken_mailbox",
+    "chicken_tui_client",
+    "database",
+    "cryptography",
+]
 
 # Enable a large amount of optimization in the dev profile for dependencies.
 [profile.dev.package."*"]
