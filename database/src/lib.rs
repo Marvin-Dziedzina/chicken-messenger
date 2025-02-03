@@ -2,6 +2,8 @@ use std::{fs, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use cryptography::xchacha20poly1305::XChaCha20Poly1305Algorithm;
+
 pub struct DB<D>
 where
     D: Default + Serialize + for<'de> Deserialize<'de>,
@@ -20,6 +22,8 @@ where
     where
         P: AsRef<std::path::Path>,
     {
+        panic!("Encryption not implemented");
+
         // TODO: Add decryption
         match fs::read(&path) {
             Ok(data) => Ok(Self {
@@ -35,6 +39,8 @@ where
     where
         P: AsRef<std::path::Path>,
     {
+        panic!("Encryption not implemented");
+
         let data = D::default();
         fs::write(&path, bincode::serialize(&data)?)?;
 
