@@ -43,7 +43,7 @@ impl Argon2Hasher {
         SaltString::generate(&mut Argon2OsRng)
     }
 
-    /// Get a cryptographic key from a password and salt.
+    /// Get a 32 byte long cryptographic key from a password and salt.
     /// The same salt needs to
     pub fn key_derivation(password: &[u8], salt_string: &SaltString) -> anyhow::Result<[u8; 32]> {
         let salt = salt_string.as_str().as_bytes();
