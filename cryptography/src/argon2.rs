@@ -155,7 +155,7 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-mod test {
+mod argon2_test {
     #[allow(unused_imports)]
     use super::Argon2Hasher;
 
