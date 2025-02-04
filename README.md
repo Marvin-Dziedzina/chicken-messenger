@@ -1,6 +1,6 @@
 # Chicken Messenger
 
-A end to end encrypted peer to peer messenger using tor.
+A end to end encrypted peer to peer messenger using the Tor network.
 
 ## Platforms 
 
