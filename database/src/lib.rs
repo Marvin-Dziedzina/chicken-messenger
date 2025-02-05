@@ -47,12 +47,19 @@ where
         })
     }
 
-    /// Delete the file at the path.
-    pub fn delete<P>(path: &P) -> anyhow::Result<()>
+    /// Delete file at path.
+    pub fn remove<P>(path: &P) -> anyhow::Result<()>
     where
         P: AsRef<std::path::Path>,
     {
         fs::remove_file(path)?;
+
+        Ok(())
+    }
+
+    /// Delete database save file.
+    pub fn delete(self) -> anyhow::Result<()> {
+        Self::remove(&self.path)?;
 
         Ok(())
     }
@@ -64,14 +71,17 @@ where
         Ok(())
     }
 
-    pub fn close(self, password_key: &[u8]) -> anyhow::Result<()> {
-        self.save(password_key)
+    /// Encrypt and save file before closing.
+    pub fn close(self, key: &[u8]) -> anyhow::Result<()> {
+        self.save(key)
     }
 
+    /// Mutable reference to inner data
     pub fn mutate(&mut self) -> &mut D {
         &mut self.data
     }
 
+    /// Serialize data to bytes, encrypt to [`Ciphertext`] and serialize to bytes.
     fn serialize(data: &D, key: &[u8]) -> anyhow::Result<Vec<u8>> {
         let data = bincode::serialize(data)?;
         let ciphertext = XChaCha20Poly1305Algorithm::encrypt(&data, key)?;
@@ -79,9 +89,59 @@ where
         Ok(bincode::serialize(&ciphertext)?)
     }
 
+    /// Deserialize [`Ciphertext`] bytes, decrypt to D bytes and deserialize to D.
     fn deserialize(ciphertext_bytes: Vec<u8>, key: &[u8]) -> anyhow::Result<D> {
         let ciphertext: Ciphertext = bincode::deserialize(&ciphertext_bytes)?;
         let data = XChaCha20Poly1305Algorithm::decrypt(key, ciphertext)?;
         Ok(bincode::deserialize(&data)?)
+    }
+}
+
+mod database_test {
+    #[allow(unused)]
+    use std::path::PathBuf;
+
+    use cryptography::argon2::{Argon2Hasher, SaltString};
+    use serde::{Deserialize, Serialize};
+
+    #[allow(unused)]
+    use crate::DB;
+
+    #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
+    struct TestData {
+        one: String,
+        two: u8,
+    }
+
+    #[allow(unused)]
+    fn generate_key(salt: &SaltString) -> [u8; 32] {
+        Argon2Hasher::key_derivation(b"bad password123", salt).unwrap()
+    }
+
+    #[allow(unused)]
+    fn generate_salt() -> SaltString {
+        Argon2Hasher::generate_salt()
+    }
+
+    #[test]
+    fn create_test() {
+        let salt = generate_salt();
+        let key = generate_key(&salt);
+        let path = PathBuf::from("./mydb.db");
+
+        let test_data = TestData {
+            one: String::from("Test_string"), // Mutate field one of TestData to new String
+            two: 69, // Mutate field two of TestData to random number I picked.
+        };
+
+        let mut db = DB::<TestData>::create(&path, &key).unwrap();
+        db.data = test_data.clone();
+        db.close(&key).unwrap();
+
+        let db = DB::<TestData>::open(&path, &key).unwrap();
+        assert_eq!(&test_data, &db.data);
+        db.save(&key).unwrap();
+
+        db.delete().unwrap();
     }
 }
