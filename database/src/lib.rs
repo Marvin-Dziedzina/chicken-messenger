@@ -2,14 +2,14 @@ use std::{fs, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use cryptography::xchacha20poly1305::XChaCha20Poly1305Algorithm;
+use cryptography::{ciphertext::Ciphertext, xchacha20poly1305::XChaCha20Poly1305Algorithm};
 
 pub struct DB<D>
 where
     D: Default + Serialize + for<'de> Deserialize<'de>,
 {
     path: PathBuf,
-    data: D,
+    pub data: D,
 }
 
 impl<D> DB<D>
@@ -18,31 +18,28 @@ where
 {
     /// Opens the file at path.
     /// If the file does not exist create one.
-    pub fn open<P>(path: &P, password_key: &[u8]) -> anyhow::Result<Self>
+    pub fn open<P>(path: &P, key: &[u8]) -> anyhow::Result<Self>
     where
         P: AsRef<std::path::Path>,
     {
-        panic!("Encryption not implemented");
-
-        // TODO: Add decryption
         match fs::read(&path) {
-            Ok(data) => Ok(Self {
-                path: path.as_ref().into(),
-                data: bincode::deserialize(&data)?,
+            Ok(ciphertext_bytes) => Ok({
+                Self {
+                    path: path.as_ref().into(),
+                    data: Self::deserialize(ciphertext_bytes, key)?,
+                }
             }),
-            Err(_) => Self::create(&path),
+            Err(_) => Self::create(&path, key),
         }
     }
 
     /// Create a new file. If a file exists, it will replace its contents.
-    pub fn create<P>(path: &P) -> anyhow::Result<Self>
+    pub fn create<P>(path: &P, key: &[u8]) -> anyhow::Result<Self>
     where
         P: AsRef<std::path::Path>,
     {
-        panic!("Encryption not implemented");
-
         let data = D::default();
-        fs::write(&path, bincode::serialize(&data)?)?;
+        fs::write(&path, Self::serialize(&data, key)?)?;
 
         Ok(Self {
             path: path.as_ref().into(),
@@ -61,9 +58,8 @@ where
     }
 
     /// Encrypt and save data to file.
-    pub fn save(&self, password_key: &[u8]) -> anyhow::Result<()> {
-        let data = bincode::serialize(&self.data)?;
-        fs::write(&self.path, data)?;
+    pub fn save(&self, key: &[u8]) -> anyhow::Result<()> {
+        fs::write(&self.path, Self::serialize(&self.data, key)?)?;
 
         Ok(())
     }
@@ -72,7 +68,20 @@ where
         self.save(password_key)
     }
 
-    pub fn modify(&mut self) -> &mut D {
+    pub fn mutate(&mut self) -> &mut D {
         &mut self.data
+    }
+
+    fn serialize(data: &D, key: &[u8]) -> anyhow::Result<Vec<u8>> {
+        let data = bincode::serialize(data)?;
+        let ciphertext = XChaCha20Poly1305Algorithm::encrypt(&data, key)?;
+
+        Ok(bincode::serialize(&ciphertext)?)
+    }
+
+    fn deserialize(ciphertext_bytes: Vec<u8>, key: &[u8]) -> anyhow::Result<D> {
+        let ciphertext: Ciphertext = bincode::deserialize(&ciphertext_bytes)?;
+        let data = XChaCha20Poly1305Algorithm::decrypt(key, ciphertext)?;
+        Ok(bincode::deserialize(&data)?)
     }
 }
