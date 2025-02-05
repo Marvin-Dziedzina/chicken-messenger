@@ -4,8 +4,7 @@ use chacha20poly1305::{
     AeadCore, KeyInit, XChaCha20Poly1305,
 };
 
-pub type Nonce = Vec<u8>;
-pub type Ciphertext = Vec<u8>;
+use crate::ciphertext::{Ciphertext, CiphertextBuf};
 
 pub struct XChaCha20Poly1305Algorithm;
 
@@ -14,14 +13,14 @@ impl XChaCha20Poly1305Algorithm {
     ///
     /// The [`Nonce`] is needed to decrypt the data.
     /// It needs to be stored everytime data is encrypted to ensure safety and that data can be decrypted with [`XChaCha20Poly1305Algorithm::decrypt()`].
-    pub fn encrypt(data: &[u8], key: &[u8]) -> anyhow::Result<(Ciphertext, Nonce)> {
+    pub fn encrypt(data: &[u8], key: &[u8]) -> anyhow::Result<Ciphertext> {
         let cipher = XChaCha20Poly1305::new(key.into());
         let nonce = Self::generate_nonce();
         let ciphertext = cipher
             .encrypt(&nonce, data)
             .map_err(|e| anyhow!("Failed to encrypt data: {}", e))?;
 
-        Ok((ciphertext, nonce.to_vec()))
+        Ok(Ciphertext::new(ciphertext, nonce.to_vec()))
     }
 
     /// Decrypt a ciphertext.
@@ -32,10 +31,10 @@ impl XChaCha20Poly1305Algorithm {
     /// # Errors
     ///
     /// This function will fail if the wrong key or [`Nonce`] are supplied.
-    pub fn decrypt(ciphertext: &[u8], key: &[u8], nonce: &[u8]) -> anyhow::Result<Vec<u8>> {
+    pub fn decrypt(key: &[u8], ciphertext: Ciphertext) -> anyhow::Result<Vec<u8>> {
         let cipher = XChaCha20Poly1305::new(key.into());
         cipher
-            .decrypt(nonce.into(), ciphertext)
+            .decrypt(ciphertext.get_nonce().into(), ciphertext.get_ciphertext())
             .map_err(|e| anyhow!("Failed to decrypt ciphertext: {}", e))
     }
 
@@ -47,7 +46,7 @@ impl XChaCha20Poly1305Algorithm {
         buf: &mut impl Buffer,
         key: &[u8],
         associated_data: Option<&[u8]>,
-    ) -> anyhow::Result<Nonce> {
+    ) -> anyhow::Result<CiphertextBuf> {
         let associated_data = match associated_data {
             Some(associated_data) => associated_data,
             None => b"",
@@ -60,7 +59,7 @@ impl XChaCha20Poly1305Algorithm {
             .encrypt_in_place(&nonce, &associated_data, buf)
             .map_err(|e| anyhow!("Failed to encrypt buffer: {}", e))?;
 
-        Ok(nonce.to_vec())
+        Ok(CiphertextBuf::new(nonce.to_vec(), associated_data.to_vec()))
     }
 
     /// Decrypt a [`Vec<u8>`] in place.
@@ -74,18 +73,16 @@ impl XChaCha20Poly1305Algorithm {
     pub fn decrypt_buf(
         buf: &mut Vec<u8>,
         key: &[u8],
-        nonce: &[u8],
-        associated_data: Option<&[u8]>,
+        ciphertext_buf: CiphertextBuf,
     ) -> anyhow::Result<()> {
-        let associated_data = match associated_data {
-            Some(associated_data) => associated_data,
-            None => b"",
-        };
-
         let mut cipher = XChaCha20Poly1305::new(key.into());
 
         cipher
-            .decrypt_in_place(nonce.into(), &associated_data, buf)
+            .decrypt_in_place(
+                ciphertext_buf.get_nonce().into(),
+                ciphertext_buf.get_associated_data(),
+                buf,
+            )
             .map_err(|e| anyhow!("Failed to decrypt buffer: {}", e))?;
 
         Ok(())
@@ -113,19 +110,18 @@ mod xchacha20poly1305_test {
     fn encrypt_decrypt_test() {
         let key = gen_key();
 
-        let (ciphertext, nonce) = XChaCha20Poly1305Algorithm::encrypt(DATA, &key).unwrap();
+        let ciphertext = XChaCha20Poly1305Algorithm::encrypt(DATA, &key).unwrap();
 
-        let decrypted_data =
-            XChaCha20Poly1305Algorithm::decrypt(&ciphertext, &key, &nonce).unwrap();
+        let decrypted_data = XChaCha20Poly1305Algorithm::decrypt(&key, ciphertext).unwrap();
 
         assert_eq!(DATA, decrypted_data);
     }
 
     #[test]
     fn encrypt_decrypt_fail_test() {
-        let (ciphertext, nonce) = XChaCha20Poly1305Algorithm::encrypt(DATA, &gen_key()).unwrap();
+        let ciphertext = XChaCha20Poly1305Algorithm::encrypt(DATA, &gen_key()).unwrap();
 
-        assert!(XChaCha20Poly1305Algorithm::decrypt(&ciphertext, &gen_key(), &nonce).is_err());
+        assert!(XChaCha20Poly1305Algorithm::decrypt(&gen_key(), ciphertext).is_err());
     }
 
     #[test]
@@ -133,9 +129,9 @@ mod xchacha20poly1305_test {
         let mut buf = DATA.to_vec();
         let key = gen_key();
 
-        let nonce = XChaCha20Poly1305Algorithm::encrypt_buf(&mut buf, &key, None).unwrap();
+        let ciphertext_buf = XChaCha20Poly1305Algorithm::encrypt_buf(&mut buf, &key, None).unwrap();
 
-        XChaCha20Poly1305Algorithm::decrypt_buf(&mut buf, &key, &nonce, None).unwrap();
+        XChaCha20Poly1305Algorithm::decrypt_buf(&mut buf, &key, ciphertext_buf).unwrap();
 
         assert_eq!(DATA, buf);
     }
@@ -144,10 +140,11 @@ mod xchacha20poly1305_test {
     fn encrypt_decrypt_buffer_fail_key_test() {
         let mut buf = DATA.to_vec();
 
-        let nonce = XChaCha20Poly1305Algorithm::encrypt_buf(&mut buf, &gen_key(), None).unwrap();
+        let ciphertext_buf =
+            XChaCha20Poly1305Algorithm::encrypt_buf(&mut buf, &gen_key(), None).unwrap();
 
         assert!(
-            XChaCha20Poly1305Algorithm::decrypt_buf(&mut buf, &gen_key(), &nonce, None).is_err()
+            XChaCha20Poly1305Algorithm::decrypt_buf(&mut buf, &gen_key(), ciphertext_buf).is_err()
         );
     }
 
@@ -157,11 +154,10 @@ mod xchacha20poly1305_test {
         let key = gen_key();
         let associated_data = b"Test associated data!!! WARNING: THIS TEXT WILL BE UNENCRYPTED AND IS NEEDED FOR DECRYPTION!!!";
 
-        let nonce =
+        let ciphertext_buf =
             XChaCha20Poly1305Algorithm::encrypt_buf(&mut buf, &key, Some(associated_data)).unwrap();
 
-        XChaCha20Poly1305Algorithm::decrypt_buf(&mut buf, &key, &nonce, Some(associated_data))
-            .unwrap();
+        XChaCha20Poly1305Algorithm::decrypt_buf(&mut buf, &key, ciphertext_buf).unwrap();
 
         assert_eq!(DATA, buf);
     }
@@ -171,17 +167,13 @@ mod xchacha20poly1305_test {
         let mut buf = DATA.to_vec();
         let associated_data = b"Test associated data!!! WARNING: THIS TEXT WILL BE UNENCRYPTED AND IS NEEDED FOR DECRYPTION!!!";
 
-        let nonce =
+        let ciphertext_buf =
             XChaCha20Poly1305Algorithm::encrypt_buf(&mut buf, &gen_key(), Some(associated_data))
                 .unwrap();
 
-        assert!(XChaCha20Poly1305Algorithm::decrypt_buf(
-            &mut buf,
-            &gen_key(),
-            &nonce,
-            Some(associated_data),
-        )
-        .is_err());
+        assert!(
+            XChaCha20Poly1305Algorithm::decrypt_buf(&mut buf, &gen_key(), ciphertext_buf,).is_err()
+        );
     }
 
     #[test]
@@ -190,15 +182,17 @@ mod xchacha20poly1305_test {
         let associated_data_1 = b"Test associated data!!! WARNING: THIS TEXT WILL BE UNENCRYPTED AND IS NEEDED FOR DECRYPTION!!!1";
         let associated_data_2 = b"Test associated data!!! WARNING: THIS TEXT WILL BE UNENCRYPTED AND IS NEEDED FOR DECRYPTION!!!2";
 
-        let nonce =
+        let ciphertext_buf =
             XChaCha20Poly1305Algorithm::encrypt_buf(&mut buf, &gen_key(), Some(associated_data_1))
                 .unwrap();
+
+        let mut wrong_ciphertext_buf = ciphertext_buf;
+        wrong_ciphertext_buf.associated_data = associated_data_2.to_vec();
 
         assert!(XChaCha20Poly1305Algorithm::decrypt_buf(
             &mut buf,
             &gen_key(),
-            &nonce,
-            Some(associated_data_2),
+            wrong_ciphertext_buf,
         )
         .is_err());
     }
