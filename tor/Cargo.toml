@@ -1,0 +1,11 @@
+[package]
+name = "tor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.95"
+arti-client = "0.26.0"
+cryptography = { path = "../cryptography" }
+database = { path = "../database" }
+tor-rtcompat = "0.26.0"

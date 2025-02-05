@@ -6,6 +6,7 @@ members = [
     "chicken_tui_client",
     "database",
     "cryptography",
+    "tor",
 ]
 
 # Enable a large amount of optimization in the dev profile for dependencies.
